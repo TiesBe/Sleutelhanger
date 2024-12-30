@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Coin Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script> <!-- Zoom plugin -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        .container {
+            padding: 20px;
+        }
+        #coin-value {
+            font-size: 2em;
+            margin: 20px 0;
+        }
+        #chart-container {
+            width: 100%;
+            margin: auto;
+            overflow-x: auto;
+            padding: 10px;
+        }
+        canvas {
+            touch-action: none; /* Prevent default touch actions (like zooming) */
+            width: 100% !important; /* Make the chart responsive */
+            height: 400px; /* Fixed height for mobile */
+        }
+        @media (max-width: 768px) {
+            #coin-value {
+                font-size: 1.5em;
+            }
+            canvas {
+                height: 300px; /* Make the chart a bit smaller on mobile */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Crypto Coin Tracker</h1>
+        <div id="coin-value">Value: $0.00</div>
+        <div id="chart-container">
+            <canvas id="coinChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('coinChart').getContext('2d');
+        const coinValueDisplay = document.getElementById('coin-value');
+
+        // Get the start time and data from localStorage, if they exist
+        let startTime = localStorage.getItem('startTime');
+        if (!startTime) {
+            startTime = new Date('2024-01-01T00:00:00Z').getTime();
+            localStorage.setItem('startTime', startTime);
+        } else {
+            startTime = parseInt(startTime);
+        }
+
+        // Get the stored chart data from localStorage
+        let chartData = JSON.parse(localStorage.getItem('chartData')) || { labels: [], data: [] };
+
+        // Set the initial coin value to the last known value, or a default value if no data exists
+        let initialCoinValue = chartData.data.length > 0 ? chartData.data[chartData.data.length - 1] : 100;
+        coinValueDisplay.textContent = `Value: $${initialCoinValue}`;
+
+        let coinChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    label: 'Crypto Coin Value',
+                    data: chartData.data,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    fill: true,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false, // Make sure the chart scales well
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        }
+                    },
+                    y: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Value ($)'
+                        }
+                    }
+                },
+                plugins: {
+                    zoom: {
+                        pan: {
+                            enabled: true,
+                            mode: 'xy', // Allows pan on both axes (x and y)
+                            speed: 10,
+                            threshold: 10
+                        },
+                        zoom: {
+                            enabled: true,
+                            mode: 'xy', // Allows zooming on both axes (x and y)
+                            speed: 0.1,
+                            sensitivity: 3,
+                            threshold: 2
+                        }
+                    }
+                }
+            }
+        });
+
+        // Function to generate a random change between -20% and +20%
+        function randomChange(currentValue) {
+            const percentChange = (Math.random() * 0.4 - 0.2); // Between -0.2 (i.e., -20%) and 0.2 (i.e., +20%)
+            return (currentValue * (1 + percentChange)).toFixed(2); // Apply the percentage change
+        }
+
+        function updateChart() {
+            const currentTime = Date.now();
+            const elapsedTime = currentTime - startTime;
+
+            // Start with the last known value from localStorage
+            let currentValue = chartData.data.length > 0 ? chartData.data[chartData.data.length - 1] : 100;
+
+            // Generate a new value with random fluctuation
+            const newValue = randomChange(currentValue);
+            const formattedTime = new Date(currentTime).toLocaleTimeString();
+
+            // Add new data point to the chart only if at least one interval has passed
+            if (elapsedTime > 10000) { // Only update after some time has passed
+                coinChart.data.labels.push(formattedTime);
+                coinChart.data.datasets[0].data.push(newValue);
+                coinValueDisplay.textContent = `Value: $${newValue}`;
+
+                // Keep all data, but limit the number of points shown in the chart (e.g., last 100 points)
+                if (coinChart.data.labels.length > 100) {
+                    coinChart.data.labels.shift();
+                    coinChart.data.datasets[0].data.shift();
+                }
+
+                // Update the chart
+                coinChart.update();
+
+                // Save the updated chart data and current time to localStorage
+                localStorage.setItem('chartData', JSON.stringify({
+                    labels: coinChart.data.labels,
+                    data: coinChart.data.datasets[0].data
+                }));
+            }
+        }
+
+        // Initialize the chart by calling updateChart at intervals
+        setInterval(updateChart, 10000); // Update every 10 seconds
+    </script>
+</body>
+</html>
