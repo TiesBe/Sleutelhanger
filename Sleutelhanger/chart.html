@@ -71,6 +71,15 @@
         let initialCoinValue = chartData.data.length > 0 ? chartData.data[chartData.data.length - 1] : 100;
         coinValueDisplay.textContent = `Value: $${initialCoinValue}`;
 
+        // Get the last update time from localStorage
+        let lastUpdateTime = localStorage.getItem('lastUpdateTime');
+        if (!lastUpdateTime) {
+            lastUpdateTime = Date.now();
+            localStorage.setItem('lastUpdateTime', lastUpdateTime);
+        } else {
+            lastUpdateTime = parseInt(lastUpdateTime);
+        }
+
         let coinChart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -128,9 +137,10 @@
             return (currentValue * (1 + percentChange)).toFixed(2); // Apply the percentage change
         }
 
+        // Update the chart
         function updateChart() {
             const currentTime = Date.now();
-            const elapsedTime = currentTime - startTime;
+            const elapsedTime = currentTime - lastUpdateTime; // Calculate time difference since last update
 
             // Start with the last known value from localStorage
             let currentValue = chartData.data.length > 0 ? chartData.data[chartData.data.length - 1] : 100;
@@ -140,7 +150,7 @@
             const formattedTime = new Date(currentTime).toLocaleTimeString();
 
             // Add new data point to the chart only if at least one interval has passed
-            if (elapsedTime > 10000) { // Only update after some time has passed
+            if (elapsedTime > 10000) { // Only update after some time has passed (10 seconds)
                 coinChart.data.labels.push(formattedTime);
                 coinChart.data.datasets[0].data.push(newValue);
                 coinValueDisplay.textContent = `Value: $${newValue}`;
@@ -159,6 +169,7 @@
                     labels: coinChart.data.labels,
                     data: coinChart.data.datasets[0].data
                 }));
+                localStorage.setItem('lastUpdateTime', currentTime); // Save the time of this update
             }
         }
 
